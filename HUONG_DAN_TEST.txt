@@ -1,0 +1,43 @@
+HƯỚNG DẪN TEST NHANH QLBH7
+==========================
+
+1) THỦ KHO - LẬP PHIẾU NHẬP
+Tài khoản: thukho_nam / 12345
+- Chọn DN000001.
+- H1 đặt 11.
+- Test nhập 5: thành công.
+- Sau đó nhập tiếp 6: thành công và đơn được cập nhật theo số còn lại.
+- Trường hợp tổng vượt 11 sẽ bị chặn.
+
+2) NHÂN VIÊN - THÊM ĐƠN BÁN
+Tài khoản: nhanvien_01 / 12345
+- Chọn KH001.
+- Chọn H1, số lượng 2, đơn giá > 0.
+- Lưu -> trạng thái Chờ thanh toán, NoTrongHan của KH001 tăng.
+- Test số lượng 0 -> bị chặn.
+
+3) KẾ TOÁN - THÊM DANH MỤC
+Tài khoản: ketoan_lan / 12345
+- Thêm DM006 / Sữa cho trẻ 0-6 tháng.
+- Để trống tên -> bị chặn.
+- Thêm lại tên đã có -> bị chặn trùng.
+
+4) THỦ KHO - ĐIỀU CHUYỂN
+Tài khoản: thukho_nam / 12345
+- Kho xuất K1, kho nhập K2.
+- Chọn H1, số lượng 10 -> thành công nếu tồn đủ.
+- Chọn K1 -> K1 -> bị chặn.
+- Nhập lượng lớn hơn tồn -> bị chặn và không trừ tồn.
+
+5) CHỦ NPP - LẬP ĐƠN ĐẶT NHẬP
+Tài khoản: chunpp_01 / 12345
+- Chọn NCC, kho K1.
+- Nhập nhu cầu, xem Tồn/Đang chờ/Gợi ý.
+- Lưu -> trạng thái Chờ nhận hàng.
+- Kiểm tra TonKho không tăng sau khi lập đơn.
+
+6) ADMIN - PHÂN QUYỀN
+Tài khoản: admin / 12345
+- Chọn ketoan_lan.
+- Chọn nhóm quyền Thủ kho.
+- Cập nhật -> CSDL thay MaNhomQuyen và hiện thông báo thành công.
