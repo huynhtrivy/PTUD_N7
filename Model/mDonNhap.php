@@ -23,6 +23,13 @@ class clsMDonNhap {
         $p=new clsKetnoi();$conn=null;
         try{
             $conn=$p->moketnoi();$conn->begin_transaction();
+            // Serialize requests from one owner, including retries after a timeout.
+            $stmt=$conn->prepare("SELECT tk.MaTaiKhoan FROM TaiKhoan tk JOIN NhomQuyen nq ON nq.MaNhomQuyen=tk.MaNhomQuyen WHERE tk.MaTaiKhoan=? AND tk.TrangThai='Hoạt động' AND nq.MaQuyen IN ('ADMIN','CHUNPP') FOR UPDATE");
+            $stmt->bind_param('i',$h['MaChuNPP']);$stmt->execute();$owner=$stmt->get_result()->fetch_assoc();$stmt->close();
+            if(!$owner)throw new Exception('Tài khoản không còn quyền lập đơn đặt nhập hàng.');
+            $stmt=$conn->prepare('SELECT SoDonNhap FROM DonNhapHang WHERE RequestKey=? AND MaChuNPP=?');
+            $stmt->bind_param('si',$h['RequestKey'],$h['MaChuNPP']);$stmt->execute();$existing=$stmt->get_result()->fetch_assoc();$stmt->close();
+            if($existing){$conn->commit();$p->dongketnoi($conn);return ['ok'=>true,'message'=>'Lập đơn đặt nhập hàng thành công. Mã đơn: '.$existing['SoDonNhap'],'code'=>$existing['SoDonNhap']];}
             if($h['ChietKhauPhanTram']<0||$h['ChietKhauPhanTram']>100||$h['ThueSuat']<0||$h['ThueSuat']>100)throw new Exception('Tỷ lệ chiết khấu và thuế phải từ 0 đến 100%.');
             $stmt=$conn->prepare("SELECT MaNCC FROM NhaCungCap WHERE MaNCC=? AND TrangThai='Hoạt động'");$stmt->bind_param('s',$h['MaNCC']);$stmt->execute();if(!$stmt->get_result()->fetch_assoc())throw new Exception('Nhà cung cấp không còn hợp lệ.');$stmt->close();
             $stmt=$conn->prepare("SELECT MaKho FROM Kho WHERE MaKho=? AND TrangThai='Hoạt động'");$stmt->bind_param('s',$h['MaKhoDuKien']);$stmt->execute();if(!$stmt->get_result()->fetch_assoc())throw new Exception('Kho dự kiến nhận không còn hợp lệ.');$stmt->close();
@@ -41,7 +48,7 @@ class clsMDonNhap {
             if(!$prepared)throw new Exception('Đơn đặt nhập phải có ít nhất một mặt hàng.');
             $ck=round($tongHang*$h['ChietKhauPhanTram']/100,2);$thue=round(($tongHang-$ck)*$h['ThueSuat']/100,2);$tong=$tongHang-$ck+$thue;
             $code=$h['SoDonNhap']?:$this->nextCodeWithConn($conn);$stmt=$conn->prepare("SELECT COUNT(*) c FROM DonNhapHang WHERE SoDonNhap=?");$stmt->bind_param('s',$code);$stmt->execute();if((int)$stmt->get_result()->fetch_assoc()['c']>0)$code=$this->nextCodeWithConn($conn);$stmt->close();
-            $ngay=date('Y-m-d');$status='Chờ nhận hàng';$payment=$h['HinhThucThanhToan'];$loai=($payment==='Trả ngay'?'IN':($payment==='Ký gửi'?'ND':'NP'));$requestKey=bin2hex(random_bytes(12));
+            $ngay=date('Y-m-d');$status='Chờ nhận hàng';$payment=$h['HinhThucThanhToan'];$loai=($payment==='Trả ngay'?'IN':($payment==='Ký gửi'?'ND':'NP'));$requestKey=$h['RequestKey'];
             $stmt=$conn->prepare("INSERT INTO DonNhapHang(SoDonNhap,MaNCC,MaKhoDuKien,MaChuNPP,NgayLap,LoaiDon,HinhThucThanhToan,ChietKhauPhanTram,ThueSuat,TongTienHang,TienChietKhau,TienThue,TongTien,TrangThai,RequestKey)
                                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
             $stmt->bind_param('sssisssddddddss',$code,$h['MaNCC'],$h['MaKhoDuKien'],$h['MaChuNPP'],$ngay,$loai,$payment,$h['ChietKhauPhanTram'],$h['ThueSuat'],$tongHang,$ck,$thue,$tong,$status,$requestKey);$stmt->execute();$stmt->close();
