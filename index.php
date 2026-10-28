@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/bootstrap.php';
 define('APP_ENTRY', true);
 include_once __DIR__ . '/Controller/cAuth.php';
 
