@@ -1,6 +1,15 @@
 <?php
 include_once __DIR__ . '/../Controller/cDonNhap.php';
 $c=new clsCDonNhap();$error='';
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $requestKey = bin2hex(random_bytes(24));
+    $_SESSION['purchase_requests'][$requestKey] = time();
+    foreach ($_SESSION['purchase_requests'] as $key => $created) {
+        if ($created < time() - 86400) unset($_SESSION['purchase_requests'][$key]);
+    }
+} else {
+    $requestKey = is_string($_POST['RequestKey'] ?? null) ? $_POST['RequestKey'] : '';
+}
 if($_SERVER['REQUEST_METHOD']==='POST' && ($_POST['uc_action']??'')==='save_purchase'){
  $res=$c->luuDon($_POST,(int)$_SESSION['user_id']);if($res['ok']){setFlash('success',$res['message']);header('Location: index.php?page=donnhap');exit;}$error=$res['message'];
 }
@@ -8,8 +17,8 @@ $ncc=$c->layNhaCungCap();$warehouses=$c->layKho();$products=$c->layHangHoa();$st
 $stock=[];foreach($stockRows as $r)$stock[$r['MaKho']][$r['MaHang']]=(float)$r['SoLuongTon'];$waiting=[];foreach($waitRows as $r)$waiting[$r['MaKho']][$r['MaHang']]=(float)$r['DangChoNhan'];
 ?>
 <?php if($error):?><div class="alert alert-error"><?=e($error)?></div><?php endif;?>
-<div class="hint"><b>UC 5:</b> Lập đơn đặt nhập chỉ tạo kế hoạch nhập hàng, trạng thái “Chờ nhận hàng”. Chức năng này <b>không tăng tồn kho</b>; tồn chỉ tăng khi Thủ kho lập Phiếu nhập kho.</div>
-<form method="post" id="frmPurchase"><input type="hidden" name="uc_action" value="save_purchase">
+<div class="hint"><b>UC06 – Chủ NPP:</b> Lập đơn đặt nhập chỉ tạo kế hoạch nhập hàng, trạng thái “Chờ nhận hàng”. Chức năng này <b>không tăng tồn kho</b>; tồn chỉ tăng khi Thủ kho lập Phiếu nhập kho.</div>
+<form method="post" id="frmPurchase"><input type="hidden" name="uc_action" value="save_purchase"><input type="hidden" name="RequestKey" value="<?=e($requestKey)?>">
 <div class="card"><div class="section-head"><div><h2>1. Thông tin đơn đặt nhập</h2><p>Nhà cung cấp, kho nhận và hình thức thanh toán dự kiến.</p></div></div>
  <div class="form-grid">
    <div class="field"><label>Số đơn nhập</label><input class="code-input" name="SoDonNhap" value="<?=e($_POST['SoDonNhap']??$preview)?>" readonly></div>
