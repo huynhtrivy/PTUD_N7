@@ -18,7 +18,9 @@ $recentReceipts = $allReceipts;
 usort($recentReceipts, function ($a, $b) {
     $ngayA = strtotime($a['NgayLap'] ?? '1970-01-01');
     $ngayB = strtotime($b['NgayLap'] ?? '1970-01-01');
-    if ($ngayA == $ngayB) return strcmp($b['MaPhieuNhap'] ?? '', $a['MaPhieuNhap'] ?? '');
+    if ($ngayA == $ngayB) {
+        return strcmp($b['MaPhieuNhap'] ?? '', $a['MaPhieuNhap'] ?? '');
+    }
     return $ngayB <=> $ngayA;
 });
 $selectedOrder = $_POST['SoDonNhap'] ?? ($orders[0]['SoDonNhap'] ?? '');
@@ -29,9 +31,7 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
         'SoLuongNhap' => $_POST['SoLuongNhap'][$i] ?? 0,
         'GiaNhap' => $_POST['GiaNhap'][$i] ?? 0,
         'MaKho' => $_POST['MaKho'][$i] ?? '',
-        'SlProm' => $_POST['SlProm'][$i] ?? 0,
-        'AmtProm' => $_POST['AmtProm'][$i] ?? 0,
-        'TaxAmtDong' => $_POST['TaxAmtDong'][$i] ?? 0
+        'SlProm' => $_POST['SlProm'][$i] ?? 0
     ];
 }
 ?>
@@ -39,6 +39,18 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
 <div class="alert alert-error"><?= e($error) ?></div>
 <?php endif; ?>
 <div class="phieu-nhap-page">
+<div class="pn-tabs">
+    <button type="button" class="pn-tab active" onclick="switchPnTab('lap',this)">+ Lập phiếu nhập</button>
+    <button type="button" class="pn-tab" onclick="switchPnTab('danhsach',this)">☷ Danh sách phiếu nhập</button>
+</div>
+<style>
+.pn-tabs{display:flex;gap:10px;margin-bottom:20px;border-bottom:1px solid #e2e8f0}
+.pn-tab{padding:12px 20px;border:0;border-radius:10px 10px 0 0;background:#f1f5f9;color:#475569;font-size:14px;font-weight:700;cursor:pointer}
+.pn-tab:hover{background:#e2e8f0}
+.pn-tab.active{background:#2563eb;color:#fff}
+.pn-tab-content{width:100%}
+</style>
+<div id="pn-tab-lap" class="pn-tab-content">
 <form method="post" id="frmPhieuNhap">
 <input type="hidden" name="uc_action" value="save_phieu_nhap">
 <input type="hidden" name="LoaiDon" id="pnLoaiDonHidden">
@@ -61,7 +73,9 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
             <label>Số đơn hàng tham chiếu</label>
             <select name="SoDonNhap" id="pnOrder" required <?= !$orders ? 'disabled' : '' ?>>
                 <?php foreach ($orders as $o): ?>
-                <option value="<?= e($o['SoDonNhap']) ?>" <?= $selectedOrder === $o['SoDonNhap'] ? 'selected' : '' ?>><?= e($o['SoDonNhap'] . ' - ' . $o['TenNCC']) ?></option>
+                <option value="<?= e($o['SoDonNhap']) ?>" <?= $selectedOrder === $o['SoDonNhap'] ? 'selected' : '' ?>>
+                    <?= e($o['SoDonNhap'] . ' - ' . $o['TenNCC']) ?>
+                </option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -107,8 +121,6 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
                     <th>Giá nhập</th>
                     <th>Mã kho</th>
                     <th>SL KM</th>
-                    <th>Tiền KM</th>
-                    <th>Tiền thuế</th>
                     <th>Thành tiền</th>
                     <th>Xóa</th>
                 </tr>
@@ -133,22 +145,6 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
             </div>
         </div>
         <div class="pn-finance-row">
-            <span>Khuyến mãi:</span>
-            <div class="pn-percent-money">
-                <input type="number" name="PromPercent" id="pnPromPercent" min="0" max="100" step="1" value="<?= e($_POST['PromPercent'] ?? 0) ?>" oninput="percentToMoney('Prom')">
-                <span>% =</span>
-                <input type="number" id="pnPromAmt" min="0" value="0" oninput="moneyToPercent('Prom')">
-            </div>
-        </div>
-        <div class="pn-finance-row">
-            <span>Hoa hồng:</span>
-            <div class="pn-percent-money">
-                <input type="number" name="ComPercent" id="pnComPercent" min="0" max="100" step="1" value="<?= e($_POST['ComPercent'] ?? 0) ?>" oninput="percentToMoney('Com')">
-                <span>% =</span>
-                <input type="number" id="pnComAmt" min="0" value="0" oninput="moneyToPercent('Com')">
-            </div>
-        </div>
-        <div class="pn-finance-row">
             <span>Thuế:</span>
             <div class="pn-percent-money">
                 <input type="number" name="TaxPercent" id="pnTaxPercent" min="0" max="100" step="1" value="<?= e($_POST['TaxPercent'] ?? 0) ?>" oninput="percentToMoney('Tax')">
@@ -167,10 +163,12 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
     </div>
 </div>
 </form>
+</div>
+<div id="pn-tab-danhsach" class="pn-tab-content" style="display:none">
 <div class="card">
     <div class="section-head">
         <div>
-            <h2>4. Danh sách phiếu nhập</h2>
+            <h2>Danh sách phiếu nhập</h2>
             <p>Các phiếu nhập kho đã lập.</p>
         </div>
     </div>
@@ -190,7 +188,9 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
             </thead>
             <tbody>
                 <?php if (!$recentReceipts): ?>
-                <tr><td colspan="8" class="empty-state">Chưa có phiếu nhập kho.</td></tr>
+                <tr>
+                    <td colspan="8" class="empty-state">Chưa có phiếu nhập kho.</td>
+                </tr>
                 <?php else: ?>
                 <?php foreach ($recentReceipts as $p): ?>
                 <tr>
@@ -201,7 +201,9 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
                     <td><?= e($p['TenNCC'] ?? '') ?></td>
                     <td><?= number_format((float)($p['TotalAmt'] ?? 0), 0, ',', '.') ?> ₫</td>
                     <td><span class="badge badge-green"><?= e($p['TrangThai'] ?? '') ?></span></td>
-                    <td><button type="button" class="btn btn-light btn-sm" onclick="openPrint('<?= e($p['MaPhieuNhap']) ?>')">In</button></td>
+                    <td>
+                        <button type="button" class="btn btn-light btn-sm" onclick="openPrint('<?= e($p['MaPhieuNhap']) ?>')">In</button>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php endif; ?>
@@ -210,7 +212,7 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
     </div>
 </div>
 </div>
-
+</div>
 <div class="modal-backdrop" id="pnPrintModal">
     <div class="modal modal-wide">
         <div class="print-preview" id="pnPrintContent">
@@ -234,7 +236,8 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
                         <th>STT</th>
                         <th>Mã hàng</th>
                         <th>Tên hàng</th>
-                        <th>SL</th>
+                        <th>SL nhập</th>
+                        <th>SL tặng</th>
                         <th>Giá nhập</th>
                         <th>Thành tiền</th>
                     </tr>
@@ -251,307 +254,301 @@ foreach (array_keys($_POST['MaHang'] ?? []) as $i) {
         </div>
     </div>
 </div>
-
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
-const ORDERS=<?= json_encode($orders,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-const RECEIPTS=<?= json_encode($allReceipts,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-const POST_ROWS=<?= json_encode($postRows,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
-const HAS_POST=<?= $_SERVER['REQUEST_METHOD']==='POST'?'true':'false' ?>;
-const PREVIEW=<?= json_encode($preview) ?>;
-let rows=[];
-
-function money(value){
-    return Number(value||0).toLocaleString('vi-VN')+' ₫';
+function switchPnTab(tab, btn) {
+    document.querySelectorAll('.pn-tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.pn-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('pn-tab-' + tab).style.display = 'block';
+    btn.classList.add('active');
 }
-
-function getOrder(){
-    const maDon=document.getElementById('pnOrder')?.value;
-    return ORDERS.find(x=>x.SoDonNhap===maDon)||null;
+const ORDERS = <?= json_encode($orders, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const RECEIPTS = <?= json_encode($allReceipts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const POST_ROWS = <?= json_encode($postRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const HAS_POST = <?= $_SERVER['REQUEST_METHOD'] === 'POST' ? 'true' : 'false' ?>;
+const PREVIEW = <?= json_encode($preview) ?>;
+let rows = [];
+function money(value) {
+    return Number(value || 0).toLocaleString('vi-VN') + ' ₫';
 }
-
-function getProduct(maHang){
-    const order=getOrder();
-    if(!order)return null;
-    return order.chiTiet.find(x=>x.MaHang===maHang)||null;
+function getOrder() {
+    const maDon = document.getElementById('pnOrder')?.value;
+    return ORDERS.find(x => x.SoDonNhap === maDon) || null;
 }
-
-function loadOrder(){
-    const order=getOrder();
-    if(!order){
-        rows=[];
+function getProduct(maHang) {
+    const order = getOrder();
+    if (!order) return null;
+    return order.chiTiet.find(x => x.MaHang === maHang) || null;
+}
+function loadOrder() {
+    const order = getOrder();
+    if (!order) {
+        rows = [];
         renderRows();
         return;
     }
-    document.getElementById('pnLoaiDon').value=order.LoaiDon||'NP';
-    document.getElementById('pnLoaiDonHidden').value=order.LoaiDon||'NP';
-    document.getElementById('pnNcc').value=order.TenNCC||'';
-    document.getElementById('pnKho').value=`${order.MaKhoDuKien||''} - ${order.TenKho||''}`;
-    document.getElementById('pnDiscPercent').value=Number(order.ChietKhauPhanTram||0);
-    document.getElementById('pnPromPercent').value=0;
-    document.getElementById('pnComPercent').value=0;
-    document.getElementById('pnTaxPercent').value=Number(order.ThueSuat||0);
-
-    if(HAS_POST&&POST_ROWS.length){
-        rows=POST_ROWS.map(x=>({...x}));
-    }else{
-        rows=order.chiTiet.map(x=>({
-            MaHang:x.MaHang,
-            SoLuongNhap:Math.floor(Number(x.ConLai||0)),
-            GiaNhap:x.GiaDuKien,
-            MaKho:order.MaKhoDuKien,
-            SlProm:0,
-            AmtProm:0,
-            TaxAmtDong:0
+    document.getElementById('pnLoaiDon').value = order.LoaiDon || 'NP';
+    document.getElementById('pnLoaiDonHidden').value = order.LoaiDon || 'NP';
+    document.getElementById('pnNcc').value = order.TenNCC || '';
+    document.getElementById('pnKho').value = `${order.MaKhoDuKien || ''} - ${order.TenKho || ''}`;
+    document.getElementById('pnDiscPercent').value = HAS_POST
+        ? Number(<?= json_encode($_POST['DiscPercent'] ?? null) ?> ?? order.ChietKhauPhanTram ?? 0)
+        : Number(order.ChietKhauPhanTram || 0);
+    document.getElementById('pnTaxPercent').value = HAS_POST
+        ? Number(<?= json_encode($_POST['TaxPercent'] ?? null) ?> ?? order.ThueSuat ?? 0)
+        : Number(order.ThueSuat || 0);
+    if (HAS_POST && POST_ROWS.length && order.SoDonNhap === <?= json_encode($selectedOrder) ?>) {
+        rows = POST_ROWS.map(x => ({...x}));
+    } else {
+        rows = order.chiTiet.map(x => ({
+            MaHang: x.MaHang,
+            SoLuongNhap: Math.floor(Number(x.ConLai || 0)),
+            GiaNhap: x.GiaDuKien,
+            MaKho: order.MaKhoDuKien,
+            SlProm: 0
         }));
     }
     renderRows();
     refreshFinance();
 }
-
-function renderRows(){
-    const tbody=document.getElementById('pnBody');
-    const order=getOrder();
-    tbody.innerHTML='';
-    if(!order||!rows.length){
-        tbody.innerHTML='<tr><td colspan="10" class="empty-state">Chưa có mặt hàng.</td></tr>';
+function renderRows() {
+    const tbody = document.getElementById('pnBody');
+    const order = getOrder();
+    tbody.innerHTML = '';
+    if (!order || !rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Chưa có mặt hàng.</td></tr>';
         calcTotal();
         return;
     }
-    rows.forEach((row,index)=>{
-        const product=getProduct(row.MaHang);
-        const conLai=Math.floor(Number(product?.ConLai||0));
-        const options=order.chiTiet.map(x=>`<option value="${x.MaHang}" ${x.MaHang===row.MaHang?'selected':''}>${x.MaHang} - ${x.TenHang}</option>`).join('');
-        const thanhTien=Number(row.SoLuongNhap||0)*Number(row.GiaNhap||0);
-        tbody.insertAdjacentHTML('beforeend',`
+    rows.forEach((row, index) => {
+        const product = getProduct(row.MaHang);
+        const conLai = Math.floor(Number(product?.ConLai || 0));
+        const options = order.chiTiet.map(x =>
+            `<option value="${x.MaHang}" ${x.MaHang === row.MaHang ? 'selected' : ''}>${x.MaHang} - ${x.TenHang}</option>`
+        ).join('');
+        const thanhTien = Number(row.SoLuongNhap || 0) * Number(row.GiaNhap || 0);
+        tbody.insertAdjacentHTML('beforeend', `
             <tr>
-                <td>${index+1}</td>
-                <td><select class="table-input" name="MaHang[]" onchange="changeProduct(${index},this.value)">${options}</select></td>
-                <td><div class="pn-qty-wrap"><input class="table-input" type="number" name="SoLuongNhap[]" min="1" max="${conLai}" step="1" value="${Math.floor(Number(row.SoLuongNhap||0))}" oninput="updateRow(${index},'SoLuongNhap',this.value,this)"><span class="pn-remaining">Còn: ${conLai}</span></div></td>
-                <td><input class="table-input" type="number" name="GiaNhap[]" min="0" step="1" value="${row.GiaNhap}" oninput="updateRow(${index},'GiaNhap',this.value,this)"></td>
-                <td><input class="table-input" value="${order.MaKhoDuKien}" readonly><input type="hidden" name="MaKho[]" value="${order.MaKhoDuKien}"></td>
-                <td><input class="table-input" type="number" name="SlProm[]" min="0" step="1" value="${Math.floor(Number(row.SlProm||0))}" oninput="updateRow(${index},'SlProm',this.value,this)"></td>
-                <td><input class="table-input" type="number" name="AmtProm[]" min="0" step="1" value="${row.AmtProm||0}" oninput="updateRow(${index},'AmtProm',this.value,this)"></td>
-                <td><input class="table-input" type="number" name="TaxAmtDong[]" min="0" step="1" value="${row.TaxAmtDong||0}" oninput="updateRow(${index},'TaxAmtDong',this.value,this)"></td>
+                <td>${index + 1}</td>
+                <td>
+                    <select class="table-input" name="MaHang[]" onchange="changeProduct(${index},this.value)">
+                        ${options}
+                    </select>
+                </td>
+                <td>
+                    <div class="pn-qty-wrap">
+                        <input class="table-input" type="number" name="SoLuongNhap[]" min="1" max="${conLai}" step="1" value="${Math.floor(Number(row.SoLuongNhap || 0))}" oninput="updateRow(${index},'SoLuongNhap',this.value,this)">
+                        <span class="pn-remaining">Còn: ${conLai}</span>
+                    </div>
+                </td>
+                <td>
+                    <input class="table-input" type="number" name="GiaNhap[]" min="0" step="10000" value="${row.GiaNhap}" oninput="updateRow(${index},'GiaNhap',this.value,this)">
+                </td>
+                <td>
+                    <input class="table-input" value="${order.MaKhoDuKien}" readonly>
+                    <input type="hidden" name="MaKho[]" value="${order.MaKhoDuKien}">
+                </td>
+                <td>
+                    <input class="table-input" type="number" name="SlProm[]" min="0" step="1" value="${Math.floor(Number(row.SlProm || 0))}" oninput="updateRow(${index},'SlProm',this.value,this)">
+                </td>
                 <td class="line-total">${money(thanhTien)}</td>
-                <td><button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${index})">Xóa</button></td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${index})">Xóa</button>
+                </td>
             </tr>
         `);
     });
     calcTotal();
 }
-
-function updateRow(index,field,value,input){
-    if(field==='SoLuongNhap'||field==='SlProm'){
-        value=Math.floor(Number(value||0));
-        input.value=value;
+function updateRow(index, field, value, input) {
+    if (field === 'SoLuongNhap' || field === 'SlProm') {
+        value = Math.floor(Number(value || 0));
+        input.value = value;
     }
-    rows[index][field]=value;
-    const tr=input.closest('tr');
-    const thanhTien=Number(rows[index].SoLuongNhap||0)*Number(rows[index].GiaNhap||0);
-    const cell=tr.querySelector('.line-total');
-    if(cell)cell.textContent=money(thanhTien);
+    rows[index][field] = value;
+    const tr = input.closest('tr');
+    const thanhTien = Number(rows[index].SoLuongNhap || 0) * Number(rows[index].GiaNhap || 0);
+    const cell = tr.querySelector('.line-total');
+    if (cell) cell.textContent = money(thanhTien);
     refreshFinance();
 }
-
-function changeProduct(index,maHang){
-    const product=getProduct(maHang);
-    const order=getOrder();
-    if(!product||!order)return;
-
-    const trung=rows.some((x,i)=>i!==index&&x.MaHang===maHang);
-    if(trung){
+function changeProduct(index, maHang) {
+    const product = getProduct(maHang);
+    const order = getOrder();
+    if (!product || !order) return;
+    const trung = rows.some((x, i) => i !== index && x.MaHang === maHang);
+    if (trung) {
         alert('Mặt hàng này đã có trong phiếu.');
         renderRows();
         return;
     }
-
-    rows[index].MaHang=maHang;
-    rows[index].SoLuongNhap=Math.floor(Number(product.ConLai||0));
-    rows[index].GiaNhap=product.GiaDuKien;
-    rows[index].MaKho=order.MaKhoDuKien;
+    rows[index].MaHang = maHang;
+    rows[index].SoLuongNhap = Math.floor(Number(product.ConLai || 0));
+    rows[index].GiaNhap = product.GiaDuKien;
+    rows[index].MaKho = order.MaKhoDuKien;
     renderRows();
     refreshFinance();
 }
-
-function addRow(){
-    const order=getOrder();
-    if(!order)return;
-
-    const daCo=rows.map(x=>x.MaHang);
-    const item=order.chiTiet.find(x=>!daCo.includes(x.MaHang));
-
-    if(!item){
+function addRow() {
+    const order = getOrder();
+    if (!order) return;
+    const daCo = rows.map(x => x.MaHang);
+    const item = order.chiTiet.find(x => !daCo.includes(x.MaHang));
+    if (!item) {
         alert('Tất cả mặt hàng đã được thêm.');
         return;
     }
-
     rows.push({
-        MaHang:item.MaHang,
-        SoLuongNhap:1,
-        GiaNhap:item.GiaDuKien,
-        MaKho:order.MaKhoDuKien,
-        SlProm:0,
-        AmtProm:0,
-        TaxAmtDong:0
+        MaHang: item.MaHang,
+        SoLuongNhap: 1,
+        GiaNhap: item.GiaDuKien,
+        MaKho: order.MaKhoDuKien,
+        SlProm: 0
     });
-
     renderRows();
     refreshFinance();
 }
-
-function deleteRow(index){
-    rows.splice(index,1);
+function deleteRow(index) {
+    rows.splice(index, 1);
     renderRows();
     refreshFinance();
 }
-
-function goodsTotal(){
-    return rows.reduce((tong,row)=>tong+Number(row.SoLuongNhap||0)*Number(row.GiaNhap||0),0);
+function goodsTotal() {
+    return rows.reduce((tong, row) =>
+        tong + Number(row.SoLuongNhap || 0) * Number(row.GiaNhap || 0), 0
+    );
 }
-
-function percentToMoney(type){
-    const tongHang=goodsTotal();
-    const phanTram=Number(document.getElementById(`pn${type}Percent`).value||0);
-    document.getElementById(`pn${type}Amt`).value=Math.round(tongHang*phanTram/100);
+function baseForPercent(type) {
+    const total = goodsTotal();
+    if (type === 'Tax') {
+        const disc = Number(document.getElementById('pnDiscAmt').value || 0);
+        return Math.max(0, total - disc);
+    }
+    return total;
+}
+function percentToMoney(type) {
+    const percentInput = document.getElementById(`pn${type}Percent`);
+    const percent = Math.min(100, Math.max(0, Number(percentInput.value || 0)));
+    percentInput.value = percent;
+    document.getElementById(`pn${type}Amt`).value = Math.round(baseForPercent(type) * percent / 100);
+    if (type === 'Disc') percentToMoney('Tax');
     calcTotal();
 }
-
-function moneyToPercent(type){
-    const tongHang=goodsTotal();
-    const tien=Number(document.getElementById(`pn${type}Amt`).value||0);
-    const phanTram=tongHang>0?tien/tongHang*100:0;
-    document.getElementById(`pn${type}Percent`).value=phanTram.toFixed(2);
+function moneyToPercent(type) {
+    const amountInput = document.getElementById(`pn${type}Amt`);
+    const base = baseForPercent(type);
+    const amount = Math.min(base, Math.max(0, Number(amountInput.value || 0)));
+    amountInput.value = amount;
+    document.getElementById(`pn${type}Percent`).value = base > 0
+        ? (amount / base * 100).toFixed(2)
+        : 0;
+    if (type === 'Disc') percentToMoney('Tax');
     calcTotal();
 }
-
-function refreshFinance(){
-    const tongHang=goodsTotal();
-
-    ['Disc','Prom','Com','Tax'].forEach(type=>{
-        const phanTram=Number(document.getElementById(`pn${type}Percent`).value||0);
-        document.getElementById(`pn${type}Amt`).value=Math.round(tongHang*phanTram/100);
-    });
-
-    calcTotal();
+function refreshFinance() {
+    percentToMoney('Disc');
 }
-
-function calcTotal(){
-    const tienHang=goodsTotal();
-    const chietKhau=Number(document.getElementById('pnDiscAmt').value||0);
-    const khuyenMai=Number(document.getElementById('pnPromAmt').value||0);
-    const hoaHong=Number(document.getElementById('pnComAmt').value||0);
-    const thue=Number(document.getElementById('pnTaxAmt').value||0);
-    const tong=Math.max(0,tienHang-chietKhau-khuyenMai-hoaHong+thue);
-
-    document.getElementById('pnGoodsTotal').textContent=money(tienHang);
-    document.getElementById('pnTotal').textContent=money(tong);
+function calcTotal() {
+    const goods = goodsTotal();
+    const disc = Number(document.getElementById('pnDiscAmt').value || 0);
+    const tax = Number(document.getElementById('pnTaxAmt').value || 0);
+    document.getElementById('pnGoodsTotal').textContent = money(goods);
+    document.getElementById('pnTotal').textContent = money(Math.max(0, goods - disc + tax));
 }
-
-function resetForm(){
-    const order=getOrder();
-    if(!order)return;
-    if(!confirm('Làm mới dữ liệu?'))return;
-
-    document.getElementById('pnCode').value=PREVIEW;
-
-    rows=order.chiTiet.map(x=>({
-        MaHang:x.MaHang,
-        SoLuongNhap:Math.floor(Number(x.ConLai||0)),
-        GiaNhap:x.GiaDuKien,
-        MaKho:order.MaKhoDuKien,
-        SlProm:0,
-        AmtProm:0,
-        TaxAmtDong:0
+function resetForm() {
+    const order = getOrder();
+    if (!order) return;
+    if (!confirm('Làm mới dữ liệu?')) return;
+    document.getElementById('pnCode').value = PREVIEW;
+    rows = order.chiTiet.map(x => ({
+        MaHang: x.MaHang,
+        SoLuongNhap: Math.floor(Number(x.ConLai || 0)),
+        GiaNhap: x.GiaDuKien,
+        MaKho: order.MaKhoDuKien,
+        SlProm: 0
     }));
-
     renderRows();
     refreshFinance();
 }
-
-function openPrint(maPhieu){
-    const p=RECEIPTS.find(x=>x.MaPhieuNhap===maPhieu);
-
-    if(!p){
+function openPrint(maPhieu) {
+    const p = RECEIPTS.find(x => x.MaPhieuNhap === maPhieu);
+    if (!p) {
         alert('Không tìm thấy phiếu.');
         return;
     }
-
-    document.getElementById('printMaPhieu').textContent=p.MaPhieuNhap||'';
-    document.getElementById('printDonHang').textContent=p.SoDonNhap||'';
-    document.getElementById('printLoaiDon').textContent=p.LoaiDon||'';
-    document.getElementById('printNgayLap').textContent=p.NgayLap||'';
-    document.getElementById('printNcc').textContent=p.TenNCC||'';
-    document.getElementById('printKho').textContent=`${p.MaKho||''} - ${p.TenKho||''}`;
-    document.getElementById('printTotal').textContent=money(p.TotalAmt);
-
-    document.getElementById('printDetailBody').innerHTML=(p.chiTiet||[]).map((ct,i)=>`
+    document.getElementById('printMaPhieu').textContent = p.MaPhieuNhap || '';
+    document.getElementById('printDonHang').textContent = p.SoDonNhap || '';
+    document.getElementById('printLoaiDon').textContent = p.LoaiDon || '';
+    document.getElementById('printNgayLap').textContent = p.NgayLap || '';
+    document.getElementById('printNcc').textContent = p.TenNCC || '';
+    document.getElementById('printKho').textContent = `${p.MaKho || ''} - ${p.TenKho || ''}`;
+    document.getElementById('printTotal').textContent = money(p.TotalAmt);
+    document.getElementById('printDetailBody').innerHTML = (p.chiTiet || []).map((ct, i) => `
         <tr>
-            <td>${i+1}</td>
+            <td>${i + 1}</td>
             <td>${ct.MaHang}</td>
-            <td>${ct.TenHang||''}</td>
+            <td>${ct.TenHang || ''}</td>
             <td>${ct.SoLuongNhap}</td>
+            <td>${ct.SlProm || 0}</td>
             <td>${money(ct.GiaNhap)}</td>
-            <td>${money(ct.ThanhTien||Number(ct.SoLuongNhap)*Number(ct.GiaNhap))}</td>
+            <td>${money(ct.ThanhTien || Number(ct.SoLuongNhap) * Number(ct.GiaNhap))}</td>
         </tr>
     `).join('');
-
-    if(window.JsBarcode){
-        JsBarcode('#pnBarcode',p.MaPhieuNhap,{
-            format:'CODE128',
-            height:40,
-            displayValue:true
+    if (window.JsBarcode) {
+        JsBarcode('#pnBarcode', p.MaPhieuNhap, {
+            format: 'CODE128',
+            height: 40,
+            displayValue: true
         });
     }
-
     document.getElementById('pnPrintModal').classList.add('show');
 }
-
-function closePrint(){
+function closePrint() {
     document.getElementById('pnPrintModal').classList.remove('show');
 }
-
-function validateForm(event){
-    if(!rows.length){
+function validateForm(event) {
+    for (const type of ['Disc', 'Tax']) {
+        const percent = Number(document.getElementById(`pn${type}Percent`).value);
+        if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+            event.preventDefault();
+            alert('Chiết khấu và thuế phải nằm trong khoảng 0 đến 100%.');
+            return;
+        }
+    }
+    if (!rows.length) {
         event.preventDefault();
         alert('Phiếu nhập chưa có mặt hàng.');
         return;
     }
-
-    for(const row of rows){
-        const product=getProduct(row.MaHang);
-        const soLuong=Number(row.SoLuongNhap||0);
-        const slKM=Number(row.SlProm||0);
-        const gia=Number(row.GiaNhap||0);
-
-        if(!Number.isInteger(soLuong)||soLuong<=0){
+    for (const row of rows) {
+        const product = getProduct(row.MaHang);
+        const soLuong = Number(row.SoLuongNhap || 0);
+        const slKM = Number(row.SlProm || 0);
+        const gia = Number(row.GiaNhap || 0);
+        if (!Number.isInteger(soLuong) || soLuong <= 0) {
             event.preventDefault();
             alert('Số lượng nhập phải là số nguyên lớn hơn 0.');
             return;
         }
-
-        if(!Number.isInteger(slKM)||slKM<0){
+        if (!Number.isInteger(slKM) || slKM < 0) {
             event.preventDefault();
             alert('Số lượng khuyến mãi phải là số nguyên từ 0 trở lên.');
             return;
         }
-
-        if(gia<=0){
+        if (gia <= 0) {
             event.preventDefault();
             alert('Giá nhập phải lớn hơn 0.');
             return;
         }
-
-        if(product&&soLuong>Number(product.ConLai||0)){
+        if (product && soLuong > Number(product.ConLai || 0)) {
             event.preventDefault();
-            alert('Số lượng nhập không được vượt số lượng còn lại. Mặt hàng: '+row.MaHang);
+            alert('Số lượng nhập không được vượt số lượng còn lại. Mặt hàng: ' + row.MaHang);
             return;
         }
     }
 }
-
-document.getElementById('pnOrder')?.addEventListener('change',loadOrder);
-document.getElementById('pnAdd')?.addEventListener('click',addRow);
-document.getElementById('frmPhieuNhap')?.addEventListener('submit',validateForm);
+document.getElementById('pnOrder')?.addEventListener('change', loadOrder);
+document.getElementById('pnAdd')?.addEventListener('click', addRow);
+document.getElementById('frmPhieuNhap')?.addEventListener('submit', validateForm);
 loadOrder();
 </script>
